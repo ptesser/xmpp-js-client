@@ -1,0 +1,13 @@
+ejabberd:
+  image: rroemhild/ejabberd
+  ports:
+    - 5222:5222
+    - 5269:5269
+    - 5280:5280
+  environment:
+    - ERLANG_NODE=ejabberd
+    - XMPP_DOMAIN=localhost pupau-test.it
+    - EJABBERD_ADMINS=admin@pupau-test.it
+    - EJABBERD_USERS=admin@pupau-test.it:password4321 user1@pupau-test.it:altraPass
+  volumes:
+    - ./ssl:/opt/ejabberd/ssl

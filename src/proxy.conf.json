@@ -1,0 +1,8 @@
+{
+  "/*": {
+    "target": "https://jabber.hot-chilli.net:5281",
+    "secure": false,
+    "logLevel": "debug",
+    "changeOrigin": true
+  }
+}
