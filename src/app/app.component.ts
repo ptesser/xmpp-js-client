@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 // import { client, debug, xml } from '@xmpp/client';
@@ -9,6 +9,13 @@ import { unescapeXMLText } from 'ltx';
 const USERNAME = 'admin@pupau-test.it';
 const PASSWORD = 'password4321';
 const URL = 'https://pupau-test.it:5280/http-bind/';
+
+const INTERNAL_HISTORICAL_ID = 'historical_messages';
+const INTERNAL_PRESENCE_ID = 'presence_user';
+const INTERNAL_INIT_PRESENCE_ID = 'initial_presence_user';
+const INTERNAL_CONTACT_LIST_ID = 'contact_list';
+
+const XMPP_ROSTER_GET_VALUE = 'jabber:iq:roster';
 
 interface Message {
   type: 'sender' | 'receiver';
@@ -24,8 +31,8 @@ export class AppComponent {
   /** [xmpp-bosh-client library] */
   private readonly xmppBoshClient: BoshClient;
   private readonly xmppBoshClientStanzaStream$ = new BehaviorSubject<XmlElement | undefined>(undefined);
-  // TODO: Not used beacuse there is an error
-  private readonly xmppBoshClientContactList$ = new BehaviorSubject<string | undefined>(undefined);
+
+  readonly xmppBoshClientContactList$ = new BehaviorSubject<string[] | undefined>(undefined);
   readonly xmppBoshClientPresence$ = new BehaviorSubject<string>('offline');
   readonly xmppBoshClientMessages$ = new BehaviorSubject<Message[]>([]);
 
@@ -38,7 +45,9 @@ export class AppComponent {
   private connection: Strophe.Connection;
   private roomName = '';
 
-  constructor() {
+  constructor(
+    private readonly cd: ChangeDetectorRef,
+  ) {
     /** [xmpp-bosh-client library]  */
     this.xmppBoshClient = new BoshClient(USERNAME, PASSWORD, URL);
 
@@ -60,7 +69,7 @@ export class AppComponent {
       };
 
       this.sendInitialPresence();
-      // this.getContactListXmppBoshClient();
+      this.getContactListXmppBoshClient();
     });
 
     this.xmppBoshClient.on('ping', () => {
@@ -68,7 +77,7 @@ export class AppComponent {
     });
 
     this.xmppBoshClient.on('stanza', (stanza) => {
-      console.log(`Stanza received at ${new Date()}`, stanza);
+      // console.log(`Stanza received at ${new Date()}`, stanza);
 
       const messageId = stanza.attrs.id || undefined;
       const to = stanza.attrs.to || undefined;
@@ -79,24 +88,32 @@ export class AppComponent {
       const message = bodies ? unescapeXMLText(bodies.getText()) : undefined;
 
       if (stanza.attrs.type === 'error') {
-        console.log('Stanza request generate an error');
+        console.log('Stanza request generate an error', stanza);
       } else {
         this.xmppBoshClientStanzaStream$.next(stanza);
       }
 
       if (stanza.name === 'message' && message) {
+        console.log(` [CHAT MESSAGE]
+        Message id: ${messageId}
+        To: ${to}
+        From: ${from}
+        Type: ${type}
+        Message: ${message || 'No message'}
+        `);
+
         this.setMessageXmppBoshClient('receiver', message);
       } else if (stanza.name === 'message') {
-        this.setPresenceXmppBoshClient(stanza);
-      }
+        console.log('[PRESENCE] Get presence signal', stanza);
 
-      console.log(`
-      Message id: ${messageId}
-      To: ${to}
-      From: ${from}
-      Type: ${type}
-      Message: ${message || 'No message'}
-      `);
+        this.setPresenceXmppBoshClient(stanza);
+      } else if (messageId === INTERNAL_HISTORICAL_ID) {
+        console.log('[HISTORICAL] Get historical messages', stanza);
+      } else if (messageId === INTERNAL_CONTACT_LIST_ID) {
+        console.log('[ROSTER] Get roaster items', stanza);
+
+        this.setContactList(stanza);
+      }
     });
 
     this.xmppBoshClient.on('offline', (reason) => {
@@ -148,6 +165,11 @@ export class AppComponent {
   }
 
   /** [xmpp-bosh-client library]  */
+  selectContactHandler(jid: string) {
+
+  }
+
+  /** [xmpp-bosh-client library]  */
   sendDirectMessageHandler(message = 'Message test') {
     this.xmppBoshClient.sendMessage('user1@pupau-test.it', message);
 
@@ -157,21 +179,17 @@ export class AppComponent {
   /** [xmpp-bosh-client library]  */
   createStanzaHandler() {
     const root: XmlElement = $build('message', { to: 'user1@pupau-test.it' });
-    const child1 = root.cnode($build('header', {
+    root.cnode($build('header', {
       id: '123',
       jid: 'user1@pupau-test.it'
     }));
-    // child1.cnode($build("some-element", {
-    //     a: "1",
-    //     b: 2
-    // }));
     this.xmppBoshClient.send(root);
   }
 
   /** [xmpp-bosh-client library]  */
   requestPresenceXmppBoshClient() {
     const root = $pres({
-      id: 'presence_user',
+      id: INTERNAL_PRESENCE_ID,
       to: 'user1@pupau-test.it',
       type: 'subscribe',
     });
@@ -182,10 +200,39 @@ export class AppComponent {
   /**
    * [xmpp-bosh-client library]
    *
+   * @link https://xmpp.org/rfcs/rfc6121.html#roster-syntax-items
+   */
+  getContactListXmppBoshClient() {
+    const root = $iq({ type: 'get', from: this.getUserIndentifier(), id: INTERNAL_CONTACT_LIST_ID });
+
+    root.cnode($build('query', {
+      xmlns: XMPP_ROSTER_GET_VALUE,
+    }));
+
+    this.xmppBoshClient.send(root);
+  }
+
+  /**
+   * [xmpp-bosh-client library]
+   *
+   */
+  private getHistoricalMessages() {
+    const root = $iq({ type: 'set', id: INTERNAL_HISTORICAL_ID});
+    root.cnode($build('query', {
+      xmlns: 'urn:xmpp:mam:2',
+      queryid: 'f27'
+    }));
+
+    this.xmppBoshClient.send(root);
+  }
+
+  /**
+   * [xmpp-bosh-client library]
+   *
    * @link https://xmpp.org/rfcs/rfc6121.html#presence-initial
    */
   private sendInitialPresence() {
-    const root = $pres({});
+    const root = $pres({ id: INTERNAL_INIT_PRESENCE_ID });
 
     this.xmppBoshClient.send(root);
   }
@@ -195,23 +242,25 @@ export class AppComponent {
     const newMessage = { type, message };
     const oldMessages = this.xmppBoshClientMessages$.value;
 
-    this.xmppBoshClientMessages$.next([ ...oldMessages, newMessage ]);
+    this.xmppBoshClientMessages$.next([...oldMessages, newMessage]);
+
+    this.cd.markForCheck();
   }
 
   private setPresenceXmppBoshClient(stanza: XmlElement) {
     const statusElement = stanza.getChild('composing') || stanza.getChild('paused') || stanza.getChild('active');
-    this.xmppBoshClientPresence$.next(statusElement.name);
+
+    if (statusElement && statusElement.name) {
+      this.xmppBoshClientPresence$.next(statusElement.name);
+    }
   }
 
-  /** [xmpp-bosh-client library]  */
-  private getContactListXmppBoshClient() {
-    const root = $iq({ type: 'get', from: this.getUserIndentifier(), id: 'contact_list' });
+  private setContactList(stanza: XmlElement) {
+    const query = stanza.getChild('query');
+    const items = query.getChildren('item');
+    const contacts = items.map((c) => c.getAttr('jid'));
 
-    root.cnode($build('query', {
-      xmlns: 'jabber:iq:roaster',
-    }));
-
-    this.xmppBoshClient.send(root);
+    this.xmppBoshClientContactList$.next(contacts);
   }
 
   /**

@@ -6,6 +6,10 @@
         <b>Stanza</b>
         : An XML stanza is the basic unit of meaning in XMPP. A stanza is a first-level element (at depth=1 of the stream) whose element name is “message”, “presence”, or “iq” and whose qualifying namespace is ‘jabber:client’ or `jabber:server`
       </p>
+      <p>
+        <b>Id on stanza XML request</b>
+        :  You can see that our IQ-get and IQ-result stanzas both have the same id of **bv1bs71f**. This is XMPP’s way of allowing us to track stanzas and know which response corresponds to which request.
+      </p>
     </div>
     <div class="card p-2 mb-2 d-block">
       <h1>xmpp-bosh-client</h1>
@@ -36,47 +40,69 @@
         </li>
         <li>[X] Presence</li>
         <li>[X] Utente che scrive</li>
-        <li>[ ] Lista conversazioni</li>
-        <li>[ ] Messaggi storici</li>
+        <li>[X] Lista utenti</li>
+        <li>[X] Messaggi storici</li>
       </ul>
-      <div class="mb-2">
-        <button
-          class="btn btn-primary mr-2"
-          (click)="sendDirectMessageHandler(messageInput.value); messageInput.value = ''">
-          Send message to user1
-        </button>
-        <button
-          class="btn btn-secondary"
-          (click)="requestPresenceXmppBoshClient()">
-          Request presence to user1
-        </button>
-      </div>
+      <div class="row">
+        <div class="col-3">
+          <h2>Contact list</h2>
+          <ul class="mb-2 list-group">
+            <li
+              class="list-group-item contact-item"
+              *ngFor="let c of xmppBoshClientContactList$ | async"
+              (click)="selectContactHandler(c)">
+              {{ c }}
+            </li>
+          </ul>
+          <button
+            class="btn btn-secondary"
+            (click)="getContactListXmppBoshClient()">
+            Get contact's list
+          </button>
+        </div>
+        <div class="col-9">
+          <div>
+            <h2>Messages</h2>
+            <ng-container *ngIf="(xmppBoshClientMessages$ | async) as xmppBoshClientMessages; else noMessages">
+              <p
+                class="m-0"
+                *ngFor="let msg of xmppBoshClientMessages">
+                <small>
+                  <b>{{ msg.type }}</b>
+                </small>
+                : {{ msg.message }}
+              </p>
+            </ng-container>
+            <ng-container *ngIf="(xmppBoshClientPresence$ | async) as xmppBoshClientPresence">
+              <p *ngIf="xmppBoshClientPresence === 'composing'">
+                <small>
+                  <b>User1 is writing</b>
+                </small>
+              </p>
+            </ng-container>
 
-      <div>
-        <h3>Messages</h3>
-        <ng-container *ngIf="(xmppBoshClientMessages$ | async) as xmppBoshClientMessages; else noMessages">
-          <p
-            class="m-0"
-            *ngFor="let msg of xmppBoshClientMessages">
-            <small><b>{{ msg.type }}</b></small>: {{ msg.message }}
-          </p>
-        </ng-container>
-        <ng-container *ngIf="(xmppBoshClientPresence$ | async) as xmppBoshClientPresence">
-          <p *ngIf="xmppBoshClientPresence === 'composing'">
-            <small>
-              <b>User1 is writing</b>
-            </small>
-          </p>
-        </ng-container>
-
-        <ng-template #noMessages>
-          <p>No messages found</p>
-        </ng-template>
-        <div class="form-group">
-          <input
-            class="form-control"
-            placeholder="Send a message via xmpp-bosh-client"
-            #messageInput>
+            <ng-template #noMessages>
+              <p>No messages found</p>
+            </ng-template>
+            <div class="form-group">
+              <input
+                class="form-control"
+                placeholder="Send a message via xmpp-bosh-client"
+                #messageInput>
+            </div>
+          </div>
+          <div class="mb-2">
+            <button
+              class="btn btn-primary mr-2"
+              (click)="sendDirectMessageHandler(messageInput.value); messageInput.value = ''">
+              Send message to user1
+            </button>
+            <button
+              class="btn btn-secondary mr-2"
+              (click)="requestPresenceXmppBoshClient()">
+              Request presence to user1
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -142,7 +168,7 @@
 
   <aside class="col-sm-12 col-md-4">
     <h1>References</h1>
-    <ul>
+    <ul class="references-container">
       <li>
         <a href="https://www.blikoontech.com/xmpp/xmpp-a-soft-friendly-introduction">
           https://www.blikoontech.com/xmpp/xmpp-a-soft-friendly-introduction
@@ -151,6 +177,17 @@
       <li>
         <a href="https://www.blikoontech.com/tutorials/xmpp-made-simple-roster-and-presence-explained">
           https://www.blikoontech.com/tutorials/xmpp-made-simple-roster-and-presence-explained
+        </a>
+      </li>
+      <li>
+        <a href="https://html.developreference.com/article/16061676/How+To+get+Chat+History+from+XMPP+for+ejabberd">
+          https://html.developreference.com/article/16061676/How+To+get+Chat+History+from+XMPP+for+ejabberd
+        </a>
+      </li>
+      <li>
+        Achievment messages:
+        <a href="https://xmpp.org/extensions/xep-0313.html">
+          https://xmpp.org/extensions/xep-0313.html
         </a>
       </li>
     </ul>
