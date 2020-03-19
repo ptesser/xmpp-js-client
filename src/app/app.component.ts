@@ -88,7 +88,8 @@ export class AppComponent {
       const message = bodies ? unescapeXMLText(bodies.getText()) : undefined;
 
       if (stanza.attrs.type === 'error') {
-        console.log('Stanza request generate an error', stanza);
+        console.warn('Stanza request generate an error', stanza);
+        return;
       } else {
         this.xmppBoshClientStanzaStream$.next(stanza);
       }
