@@ -1,5 +1,5 @@
 <div class="container-fluid row page">
-  <main class="col-sm-12 col-md-8">
+  <main class="col-sm-12 col-md-9">
     <div>
       <h1>Some generic info</h1>
       <p>
@@ -49,6 +49,7 @@
           <ul class="mb-2 list-group">
             <li
               class="list-group-item contact-item"
+              [class.active]="xmppBoshClientSelectContact === c"
               *ngFor="let c of xmppBoshClientContactList$ | async"
               (click)="selectContactHandler(c)">
               {{ c }}
@@ -60,7 +61,9 @@
             Get contact's list
           </button>
         </div>
-        <div class="col-9">
+        <div
+          *ngIf="xmppBoshClientSelectContact$ | async as xmppBoshClientSelectContact"
+          class="col-9">
           <div>
             <h2>Messages</h2>
             <ng-container *ngIf="(xmppBoshClientMessages$ | async) as xmppBoshClientMessages; else noMessages">
@@ -76,7 +79,9 @@
             <ng-container *ngIf="(xmppBoshClientPresence$ | async) as xmppBoshClientPresence">
               <p *ngIf="xmppBoshClientPresence === 'composing'">
                 <small>
-                  <b>User1 is writing</b>
+                  <b>
+                    {{ xmppBoshClientSelectContact }} is writing
+                  </b>
                 </small>
               </p>
             </ng-container>
@@ -95,12 +100,12 @@
             <button
               class="btn btn-primary mr-2"
               (click)="sendDirectMessageHandler(messageInput.value); messageInput.value = ''">
-              Send message to user1
+              Send msg to {{ xmppBoshClientSelectContact }}
             </button>
             <button
               class="btn btn-secondary mr-2"
               (click)="requestPresenceXmppBoshClient()">
-              Request presence to user1
+              Request presence to {{ xmppBoshClientSelectContact }}
             </button>
           </div>
         </div>
@@ -166,7 +171,7 @@
     </div>
   </main>
 
-  <aside class="col-sm-12 col-md-4">
+  <aside class="col-sm-12 col-md-3">
     <h1>References</h1>
     <ul class="references-container">
       <li>

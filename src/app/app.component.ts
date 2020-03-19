@@ -36,6 +36,11 @@ export class AppComponent {
   readonly xmppBoshClientPresence$ = new BehaviorSubject<string>('offline');
   readonly xmppBoshClientMessages$ = new BehaviorSubject<Message[]>([]);
 
+  readonly xmppBoshClientSelectContact$ = new BehaviorSubject<string | undefined>(undefined);
+  get xmppBoshClientSelectContact() {
+    return this.xmppBoshClientSelectContact$.value;
+  }
+
   /** [strophe.js library] */
   private dismissObserver = new BehaviorSubject<string | undefined>(undefined);
   public dismiss: any;
@@ -165,14 +170,22 @@ export class AppComponent {
     // xmpp.start().catch(console.error);
   }
 
+  /** -------------------------------------- XMPP-BOSH-CLIENT ------------------------------------------------------ */
+
   /** [xmpp-bosh-client library]  */
   selectContactHandler(jid: string) {
+    this.xmppBoshClientSelectContact$.next(jid);
 
+    this.xmppBoshClientMessages$.next([]); // reset chat
   }
 
   /** [xmpp-bosh-client library]  */
   sendDirectMessageHandler(message = 'Message test') {
-    this.xmppBoshClient.sendMessage('user1@pupau-test.it', message);
+    if (!this.xmppBoshClientSelectContact) {
+      throw new Error('Cannot send a message if no contact is selected');
+    }
+
+    this.xmppBoshClient.sendMessage(this.xmppBoshClientSelectContact, message);
 
     this.setMessageXmppBoshClient('sender', message);
   }
@@ -256,6 +269,7 @@ export class AppComponent {
     }
   }
 
+  /** [xmpp-bosh-client library]  */
   private setContactList(stanza: XmlElement) {
     const query = stanza.getChild('query');
     const items = query.getChildren('item');
