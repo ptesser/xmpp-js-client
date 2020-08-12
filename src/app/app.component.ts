@@ -20,6 +20,7 @@ const XMPP_ROSTER_GET_VALUE = 'jabber:iq:roster';
 interface Message {
   type: 'sender' | 'receiver';
   message: string;
+  author: string;
 }
 
 @Component({
@@ -108,13 +109,16 @@ export class AppComponent {
         Message: ${message || 'No message'}
         `);
 
-        this.setMessageXmppBoshClient('receiver', message);
+        const author = from; // TODO: remove text after /
+        this.setMessageXmppBoshClient('receiver', message, author);
       } else if (stanza.name === 'message') {
         console.log('[PRESENCE] Get presence signal', stanza);
 
         this.setPresenceXmppBoshClient(stanza);
       } else if (messageId === INTERNAL_HISTORICAL_ID) {
         console.log('[HISTORICAL] Get historical messages', stanza);
+
+        this.setHistoricalMessages(stanza);
       } else if (messageId === INTERNAL_CONTACT_LIST_ID) {
         console.log('[ROSTER] Get roaster items', stanza);
 
@@ -176,6 +180,8 @@ export class AppComponent {
   selectContactHandler(jid: string) {
     this.xmppBoshClientSelectContact$.next(jid);
 
+    this.getHistoricalMessages(jid);
+
     this.xmppBoshClientMessages$.next([]); // reset chat
   }
 
@@ -187,7 +193,7 @@ export class AppComponent {
 
     this.xmppBoshClient.sendMessage(this.xmppBoshClientSelectContact, message);
 
-    this.setMessageXmppBoshClient('sender', message);
+    this.setMessageXmppBoshClient('sender', message, USERNAME);
   }
 
   /** [xmpp-bosh-client library]  */
@@ -229,15 +235,37 @@ export class AppComponent {
   /**
    * [xmpp-bosh-client library]
    *
+   * Get data: @link https://xmpp.org/extensions/xep-0313.html
+   * Paginate results: @link https://xmpp.org/extensions/xep-0059.html
+   * Filter by JID: @link https://xmpp.org/extensions/xep-0313.html#filter-jid
+   *
    */
-  private getHistoricalMessages() {
-    const root = $iq({ type: 'set', id: INTERNAL_HISTORICAL_ID});
-    root.cnode($build('query', {
+  private getHistoricalMessages(jid: string) {
+    const root = $iq({ type: 'set', id: INTERNAL_HISTORICAL_ID });
+    const query = root.cnode($build('query', {
       xmlns: 'urn:xmpp:mam:2',
-      queryid: 'f27'
+      // queryid: 'f27'
     }));
 
-    this.xmppBoshClient.send(root);
+    const x = query.cnode($build('x', {
+      xmlns: 'jabber:x:data',
+      type: 'submit',
+    }));
+
+    const fieldForm = x.cnode($build('field', {
+      var: 'FORM_TYPE',
+      type: 'hidden',
+    }));
+    fieldForm.cnode($build('value', {}, 'urn:xmpp:mam:2')).write('urn:xmpp:mam:2');
+
+    const fieldWith = x.cnode($build('field', {
+      var: 'with'
+    }));
+    fieldWith.cnode($build('value', {}, jid)).write(jid);
+
+    console.log(x);
+    // TODO: Set inner element in form and with parent <value>jid</value>
+    this.xmppBoshClient.send(x);
   }
 
   /**
@@ -252,8 +280,8 @@ export class AppComponent {
   }
 
   /** [xmpp-bosh-client library]  */
-  private setMessageXmppBoshClient(type: 'sender' | 'receiver', message: string) {
-    const newMessage = { type, message };
+  private setMessageXmppBoshClient(type: 'sender' | 'receiver', message: string, author: string) {
+    const newMessage = { type, message, author };
     const oldMessages = this.xmppBoshClientMessages$.value;
 
     this.xmppBoshClientMessages$.next([...oldMessages, newMessage]);
@@ -278,6 +306,12 @@ export class AppComponent {
     this.xmppBoshClientContactList$.next(contacts);
   }
 
+  /** [xmpp-bosh-client library]  */
+  private setHistoricalMessages(stanza: XmlElement) {
+
+  }
+
+  /** -------------------------------------- STROPHE.JS ------------------------------------------------------ */
   /**
    * [strophe.js library]
    *

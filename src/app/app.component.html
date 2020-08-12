@@ -71,7 +71,7 @@
                 class="m-0"
                 *ngFor="let msg of xmppBoshClientMessages">
                 <small>
-                  <b>{{ msg.type }}</b>
+                  <b>{{ msg.author + '(' + msg.type + ')' }}</b>
                 </small>
                 : {{ msg.message }}
               </p>
@@ -193,6 +193,12 @@
         Achievment messages:
         <a href="https://xmpp.org/extensions/xep-0313.html">
           https://xmpp.org/extensions/xep-0313.html
+        </a>
+      </li>
+      <li>
+        Paginate results: 
+        <a href="https://xmpp.org/extensions/xep-0059.html">
+          https://xmpp.org/extensions/xep-0059.html
         </a>
       </li>
     </ul>
